@@ -7,6 +7,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import cookieParser from 'cookie-parser'
 import stripe from 'stripe'
+import { verifyToken, AuthRequest } from './tokenVerify'
 const app = express()
 app.use(express.json({limit: '50mb'}))
 app.use(cookieParser())
@@ -65,14 +66,13 @@ app.get('/verify-token', async (req: Request, res: Response) => {
         return res.status(401).json({ message: 'Invalid or expired token.' });
     }
 })
-
 app.post('/auth/signup', async (req: Request, res: Response) => {
     try{
         const {fullName, email, password, profilePicture, bio, id} = req.body
         const emailExists = await users.findOne({email})
         const nameExists = await users.findOne({fullName})
         if(nameExists || emailExists){
-            return res.status(409).json({message: 'Your email and name is already taken.'})
+           return res.status(409).json({message: 'Your email and name is already taken.'})
         }
         const newUser = new users({
             fullName,
@@ -147,22 +147,27 @@ app.patch('/change-profile/:id', async (req: Request, res: Response) => {
         return res.status(500).json({message: "Error updating profile", error})
     }
 })
-app.patch('/change-password/:id', async (req: Request, res: Response) => {
+// Added verifyToken and AuthRequest
+app.patch('/change-password/:id', verifyToken, async (req: Request, res: Response) => {
     try{
         const id = req.params.id
         const {password, newPassword} = req.body
+
+        // SECURITY FIX
+        if (req.user?.id !== id) return res.status(403).json({ message: "Access denied." })
+
         const user = await users.findOne({id})
         if(!user) return res.status(404).json({message: 'User not found'})
         
         const isTheSame = await bcrypt.compare(password, user.password)
-        if(!isTheSame) return res.status(401).json({message: 'Incorrect password, buddy.'})
+        if(!isTheSame) return res.status(401).json({message: 'Incorrect password.'})
         
-        user.password = await bcrypt.hash(newPassword, 15)
+        // PERFORMANCE FIX: Changed 15 to 10
+        user.password = await bcrypt.hash(newPassword, 10)
         await user.save()
         return res.status(200).json({message: 'Successfully changed the password.'})
     }catch(error){
-        console.log(error)
-        return res.status(500).json({message: "Error updating password", error})
+        return res.status(500).json({message: "Error updating password"})
     }
 })
 app.post('/products/:type', async (req: Request, res: Response) => {
@@ -177,18 +182,24 @@ app.post('/products/:type', async (req: Request, res: Response) => {
         return res.status(500).json({message: "Yikes! Something's up with the servers or something."})
     }
 })
-app.get('/cart/:id', async (req: Request, res: Response) => {
-    try{
+app.get('/cart/:id', verifyToken, async (req: AuthRequest, res: Response) => {
+    try {
         const id = req.params.id
-        const foundUser = await users.findOne({id})
-        if(!foundUser) return res.status(404).json({message: 'User not found'})
+        
+        // SECURITY FIX: Check if the token ID matches the requested ID
+        if (req.user?.id !== id) {
+             return res.status(403).json({ message: "Access denied." })
+        }
+
+        const foundUser = await users.findOne({ id })
+        if (!foundUser) return res.status(404).json({ message: 'User not found' })
+        
         return res.status(200).json(foundUser.cart)
-    }catch(error){
-        return res.status(500).json({message: "Yikes! Something's up with the servers or something."})
+    } catch (error) {
+        return res.status(500).json({ message: "Server error" })
     }
 })
-
-app.post('/cart/:id', async (req: Request, res: Response) => {
+app.post('/cart/:id', verifyToken, async (req: Request, res: Response) => {
     try{
         const id = req.params.id
         const {product, quantity} = req.body
@@ -210,7 +221,7 @@ app.post('/cart/:id', async (req: Request, res: Response) => {
         return res.status(500).json({message: "Yikes! Something's up with the servers or something."})
     }
 })
-app.delete('/cart/:id', async (req: Request, res: Response) => {
+app.delete('/cart/:id', verifyToken, async (req: Request, res: Response) => {
     try {
         const {id} = req.params
         const {productID} = req.body
@@ -224,7 +235,7 @@ app.delete('/cart/:id', async (req: Request, res: Response) => {
         return res.status(500).json({message: "Error removing from cart", error})
     }
 })
-app.post('/checkout', async (req: Request, res: Response) => {
+app.post('/checkout', verifyToken, async (req: Request, res: Response) => {
     try{
         const {id} = req.body
         const user = await users.findOne({id})
@@ -254,7 +265,7 @@ app.post('/checkout', async (req: Request, res: Response) => {
         return res.status(500).json({message: "Error removing from cart", error})
     }
 })
-app.get('/checkout-session', async (req: Request, res: Response) => {
+app.get('/checkout-session', verifyToken, async (req: Request, res: Response) => {
   try {
     const { session_id } = req.query;
 
@@ -303,7 +314,7 @@ app.get('/checkout-session', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to retrieve session' });
   }
 });
-app.post('/product-details/:id', async (req: Request, res: Response) => {
+app.post('/product-details/:id', verifyToken, async (req: Request, res: Response) => {
     try{
         const {id} = req.params
         const {title, rating, content, user, date} = req.body

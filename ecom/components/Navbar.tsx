@@ -44,7 +44,7 @@ function Navbar() {
     navBg: isDarkMode ? "bg-[#0A0A0A]/80" : "bg-[#F9F9F9]/80",
     dropdownBg: isDarkMode ? "bg-[#0A0A0A]/95" : "bg-white/95",
   };
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const subtotal = Array.isArray(cart) ? cart.reduce((acc, item) => acc + (item.price * item.quantity), 0) : 0
 
   async function handleLogout(){
     try{
@@ -122,16 +122,31 @@ function Navbar() {
         try{
             const response = await fetch(`http://localhost:4000/cart/${id}`, {
                 headers: { 'Content-Type': "application/json" },
-                method: 'GET'
-            })
-            const res = await response.json()
-            setCart(res)
-            console.log('Cart fetched:', res)
-        }catch(error){
+            })            
+            if (response.ok) {
+                const res = await response.json()
+                // ONLY set cart if it is an array
+                if (Array.isArray(res)) {
+                    setCart(res)
+                } else {
+                    setCart([])
+                }
+            } else {
+                console.log("Failed to fetch cart")
+                setCart([])
+            }
+        } catch(error){
             console.log('Cart fetch error:', error)
+            setCart([])
         }
     }
-    currentUser?.id && getCart(currentUser?.id)
+    
+    // Only fetch if user is logged in
+    if (currentUser?.id) {
+        getCart(currentUser.id)
+    } else {
+        setCart([]) // Reset cart if no user
+    }
   }, [currentUser?.id])
 
   async function removeFromCart(productID: string){
@@ -142,7 +157,7 @@ function Navbar() {
             body: JSON.stringify({productID})
         })
         const res = await response.json()
-        setCart(cart.filter(item => item.id !== productID))
+        setCart(prevCart => Array.isArray(prevCart) ? prevCart.filter(item => item.id !== productID) : [])
     }catch(error){
         console.log(error)
     }
