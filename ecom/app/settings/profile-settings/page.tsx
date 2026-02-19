@@ -59,13 +59,13 @@ const ProfileSettings = () => {
       }
       scanForUser()
     }, [])
-
     async function editUserDetails(id: string){
-      await fetch(`http://localhost:4000/change-profile/${id}`, {
+      await fetch(`http://localhost:4000/change-profile`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(edited)
       })
     }

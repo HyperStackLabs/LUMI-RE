@@ -29,12 +29,9 @@ const OrderSuccess = () => {
   const [orderDetails, setOrderDetails] = useState<OrderData | null>(null);
 
   useEffect(() => {
-    // 1. Get Session ID from URL
     const sessionId = new URLSearchParams(window.location.search).get('session_id');
 
-    if (!sessionId) return;
-
-    // 2. Fetch Details from Backend
+    if (!sessionId) return
     fetch(`http://localhost:4000/checkout-session?session_id=${sessionId}`, {
       credentials: 'include'
     })

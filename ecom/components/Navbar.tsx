@@ -118,14 +118,14 @@ function Navbar() {
   }, []);
 
   useEffect(() => {
-    async function getCart(id: string){
+    async function getCart(){
         try{
-            const response = await fetch(`http://localhost:4000/cart/${id}`, {
+            const response = await fetch(`http://localhost:4000/cart`, {
                 headers: { 'Content-Type': "application/json" },
+                credentials: 'include'
             })            
             if (response.ok) {
                 const res = await response.json()
-                // ONLY set cart if it is an array
                 if (Array.isArray(res)) {
                     setCart(res)
                 } else {
@@ -140,12 +140,10 @@ function Navbar() {
             setCart([])
         }
     }
-    
-    // Only fetch if user is logged in
     if (currentUser?.id) {
-        getCart(currentUser.id)
+        getCart()
     } else {
-        setCart([]) // Reset cart if no user
+        setCart([])
     }
   }, [currentUser?.id])
 
@@ -154,6 +152,7 @@ function Navbar() {
         const response = await fetch(`http://localhost:4000/cart/${currentUser?.id}`, {
             headers: { 'Content-Type': "application/json" },
             method: 'DELETE',
+            credentials: 'include',
             body: JSON.stringify({productID})
         })
         const res = await response.json()
@@ -167,6 +166,7 @@ function Navbar() {
       const response = await fetch('http://localhost:4000/checkout', {
         method: 'POST',
         headers: { 'Content-Type': "application/json" },
+        credentials: 'include',
         body: JSON.stringify({id})
       })
       const data = await response.json()

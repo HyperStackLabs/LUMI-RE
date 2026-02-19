@@ -77,14 +77,14 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
     }
     product_type && getProducts(product_type)
   }, [])
-  async function addToCart(id: string){
+  async function addToCart(product: Product, quantity: number){
     try {
-      if(!product) return
-      const response = await fetch(`http://localhost:4000/cart/${id}`, {
+      const response = await fetch(`http://localhost:4000/cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({product, quantity})
       })
       if(response.ok) {
@@ -94,14 +94,15 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
       console.log('Error adding to cart:', error)
     }
   }
-  async function postComment(id: string, user: IUser){
+  async function postComment(id: string){
     try{
       const response = await fetch(`http://localhost:4000/product-details/${id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({...newComment, user})
+        credentials: 'include',
+        body: JSON.stringify({...newComment})
       })
       console.log(newComment)
       if(response.ok){
@@ -215,7 +216,7 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
                    </div>
 
                    {/* Add to Cart */}
-                   <button onClick={() => currentUser?.id && addToCart(currentUser.id)} className="flex-1 h-14 bg-[#D4AF37] text-black text-xs uppercase tracking-[0.2em] font-bold hover:bg-white transition-colors duration-300">
+                   <button onClick={() => addToCart(product, quantity)} className="flex-1 h-14 bg-[#D4AF37] text-black text-xs uppercase tracking-[0.2em] font-bold hover:bg-white transition-colors duration-300">
                      Add to Bag
                    </button>
                 </div>
@@ -321,7 +322,7 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
                   className={`w-full bg-transparent border-b ${theme.border} py-3 text-sm outline-none focus:border-[#D4AF37] transition-colors resize-none`}
                 />
                 <button
-                  onClick={() => currentUser && postComment(product.id, currentUser)}
+                  onClick={() => currentUser && postComment(product.id)}
                   className="px-8 py-3 border border-[#D4AF37] text-[#D4AF37] text-[10px] uppercase tracking-widest hover:bg-[#D4AF37] hover:text-black transition-colors w-full"
                   disabled={!currentUser}
                 >
@@ -370,7 +371,7 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
                 </div>
                 
                 <div className="flex text-[#D4AF37] gap-1">
-                  {[...Array(5)].map((_, i) => <Star key={i} size={12} fill={i <= Math.ceil(comment.rating) ? "#D4AF37" : 'transparent'} />)}
+                  {[...Array(5)].map((_, i) => <Star key={i} size={12} fill={i <= Math.ceil(comment.rating) - 1 ? "#D4AF37" : 'transparent'} />)}
                 </div>
                 
                 <h5 className="text-lg font-serif">{comment.title}</h5>
