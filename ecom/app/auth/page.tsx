@@ -1,8 +1,9 @@
 'use client'
 import React, { FormEvent, useEffect, useState } from 'react';
 import { Eye, EyeOff, ArrowLeft, Check } from 'lucide-react';
-import generateID from '@/hooks/generateID';
+import generateID from '@/utils/generateID';
 import { useRouter } from 'next/navigation';
+import betterFetch from '@/utils/betterFetch';
 
 
 const LuxuryAuth = () => {
@@ -63,11 +64,8 @@ const LuxuryAuth = () => {
   async function userCreation(e: React.FormEvent<HTMLElement>){
     try{
       e.preventDefault()
-      await fetch('http://localhost:4000/auth/signup', {
+      await betterFetch('http://localhost:4000/auth/signup', {
         method: "POST",
-        headers: {
-        "Content-Type": "application/json"
-        },
         body: JSON.stringify({...credentials, id: generateID()})
       })
       LoginToExistingUser(e)

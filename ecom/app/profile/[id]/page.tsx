@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { 
   User, 
   Package, 
-  Settings, 
   LogOut, 
   Camera, 
   ShoppingBag,
@@ -11,31 +10,14 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-
-// Interfaces matching your Schema
-interface OrderHistoryItem {
-  ProductName: string;
-  price: number;
-  _id?: string;
-}
-
-interface UserProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  profilePicture: string;
-  bio: string;
-  OrderHistory: OrderHistoryItem[];
-  cart: any[];
-}
+import useUserScan from '@/hooks/scanForUser';
+import betterFetch from '@/utils/betterFetch';
 
 const ProfilePage = () => {
-  const router = useRouter();
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'settings'>('overview');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Theme Config
+  const router = useRouter()
+  const {currentUser} = useUserScan()
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'settings'>('overview')
+  const [isLoading, setIsLoading] = useState(true)
   const theme = {
     bg: "bg-[#0A0A0A]",
     cardBg: "bg-[#111]",
@@ -46,34 +28,9 @@ const ProfilePage = () => {
     inputBg: "bg-transparent"
   };
 
-  // Fetch Data
-  useEffect(() => {
-    async function getUserData() {
-      try {
-        const response = await fetch('http://localhost:4000/verify-token', {
-          headers: { 'Content-Type': "application/json" },
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data);
-        } else {
-          router.push('/auth');
-        }
-      } catch (e) {
-        console.error("Failed to fetch user");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    getUserData();
-  }, [router]);
-
-  // Logout Logic
   const handleLogout = async () => {
     try {
-        await fetch('http://localhost:4000/auth/logout', { method: 'POST', credentials: 'include' });
+        await betterFetch('http://localhost:4000/auth/logout', { method: 'POST'});
         router.push('/auth');
     } catch(e) { console.error(e) }
   };
@@ -84,8 +41,8 @@ const ProfilePage = () => {
     </div>
   );
 
-  if (!user) return null;
-  const totalInvested = user.OrderHistory.reduce((acc, item) => acc + item.price, 0);
+  if (!currentUser) return null;
+  const totalInvested = currentUser.OrderHistory.reduce((acc, item) => acc + item.price, 0);
 
   return (
     <div className={`min-h-screen ${theme.bg} ${theme.text} font-sans selection:bg-[#D4AF37] selection:text-white pt-32 pb-12`}>
@@ -100,7 +57,7 @@ const ProfilePage = () => {
                 <div className="relative w-32 h-32 mx-auto mb-6">
                     <div className="w-full h-full rounded-full border-[1px] border-[#D4AF37] p-1">
                         <img 
-                            src={user.profilePicture || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=2864&auto=format&fit=crop"} 
+                            src={currentUser.profilePicture || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=2864&auto=format&fit=crop"} 
                             alt="Profile" 
                             className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                         />
@@ -111,24 +68,24 @@ const ProfilePage = () => {
                 </div>
 
                 {/* Name & Bio */}
-                <h1 className="text-2xl font-serif mb-2">{user.fullName}</h1>
-                <p className={`text-xs uppercase tracking-widest ${theme.subText} mb-6`}>{user.email}</p>
+                <h1 className="text-2xl font-serif mb-2">{currentUser.fullName}</h1>
+                <p className={`text-xs uppercase tracking-widest ${theme.subText} mb-6`}>{currentUser.email}</p>
                 
                 <div className="relative">
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl text-[#D4AF37] font-serif">"</div>
                     <p className={`text-sm font-light italic leading-relaxed ${theme.subText} px-4`}>
-                        {user.bio || "Connoisseur of fine timepieces and luxury goods."}
+                        {currentUser.bio || "Connoisseur of fine timepieces and luxury goods."}
                     </p>
                 </div>
 
                 {/* Quick Stats */}
                 <div className={`grid grid-cols-2 gap-4 mt-8 pt-8 border-t ${theme.border}`}>
                     <div>
-                        <p className="text-2xl font-serif">{user.OrderHistory.length}</p>
+                        <p className="text-2xl font-serif">{currentUser.OrderHistory.length}</p>
                         <p className="text-[10px] uppercase tracking-widest text-gray-500">Acquisitions</p>
                     </div>
                     <div>
-                        <p className="text-2xl font-serif">{user.cart.length}</p>
+                        <p className="text-2xl font-serif">{currentUser.cart.length}</p>
                         <p className="text-[10px] uppercase tracking-widest text-gray-500">In Bag</p>
                     </div>
                 </div>
@@ -165,8 +122,8 @@ const ProfilePage = () => {
                 <div className="space-y-6 animate-fade-in">
                     <div className={`${theme.cardBg} border ${theme.border} p-8 flex flex-col md:flex-row items-center justify-between gap-6`}>
                          <div>
-                            <h2 className="text-2xl font-serif mb-2">Welcome Back, {user.fullName.split(' ')[0]}.</h2>
-                            <p className={`text-sm ${theme.subText}`}>You have {user.cart.length} items waiting in your shopping bag.</p>
+                            <h2 className="text-2xl font-serif mb-2">Welcome Back, {currentUser.fullName.split(' ')[0]}.</h2>
+                            <p className={`text-sm ${theme.subText}`}>You have {currentUser.cart.length} items waiting in your shopping bag.</p>
                          </div>
                          <button onClick={() => router.push('/')} className="px-8 py-3 bg-[#D4AF37] text-black text-xs uppercase tracking-widest font-bold hover:bg-white transition-colors">
                             Continue Shopping
@@ -179,10 +136,10 @@ const ProfilePage = () => {
                              <h3 className="text-[#D4AF37] text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
                                 <ShoppingBag size={14} /> Latest Purchase
                              </h3>
-                             {user.OrderHistory.length > 0 ? (
+                             {currentUser.OrderHistory.length > 0 ? (
                                 <div>
-                                    <p className="text-lg font-serif">{user.OrderHistory[user.OrderHistory.length - 1].ProductName}</p>
-                                    <p className={`text-sm ${theme.subText}`}>${user.OrderHistory[user.OrderHistory.length - 1].price.toLocaleString()}</p>
+                                    <p className="text-lg font-serif">{currentUser.OrderHistory[currentUser.OrderHistory.length - 1].ProductName}</p>
+                                    <p className={`text-sm ${theme.subText}`}>${currentUser.OrderHistory[currentUser.OrderHistory.length - 1].price.toLocaleString()}</p>
                                 </div>
                              ) : (
                                 <p className="text-sm text-gray-500 italic">No purchases yet.</p>
@@ -210,10 +167,10 @@ const ProfilePage = () => {
                 <div className={`${theme.cardBg} border ${theme.border} animate-fade-in`}>
                     <div className="p-8 border-b border-gray-800 flex justify-between items-center">
                         <h2 className="text-xl font-serif">Acquisition History</h2>
-                        <span className="text-xs text-gray-500 uppercase tracking-widest">{user.OrderHistory.length} Total</span>
+                        <span className="text-xs text-gray-500 uppercase tracking-widest">{currentUser.OrderHistory.length} Total</span>
                     </div>
                     
-                    {user.OrderHistory.length === 0 ? (
+                    {currentUser.OrderHistory.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <p>No acquisitions recorded yet.</p>
                             <button className="mt-4 text-[#D4AF37] border-b border-[#D4AF37] uppercase text-xs tracking-widest pb-1">Browse Collection</button>
@@ -227,7 +184,7 @@ const ProfilePage = () => {
                             </div>
                             
                             {/* List */}
-                            {user.OrderHistory.slice().reverse().map((order, idx) => (
+                            {currentUser.OrderHistory.slice().reverse().map((order, idx) => (
                                 <div key={idx} className="grid grid-cols-12 px-8 py-6 border-b border-gray-800 hover:bg-white/5 transition-colors items-center group">
                                     <div className="col-span-8 flex items-center gap-4">
                                         <div className="w-2 h-2 rounded-full bg-[#D4AF37] opacity-50 group-hover:opacity-100"></div>

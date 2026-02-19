@@ -6,13 +6,16 @@ import {
   ShoppingBag, 
   Shield, 
   ChevronRight,
-  Lock
+  Lock,
+  LoaderCircle
 } from 'lucide-react';
 import { IUser } from '@/app/page';
+import betterFetch from '@/utils/betterFetch';
 
 const SecuritySettings = () => {
   // Only keeping the Theme State
   const [isDarkMode, setIsDarkMode] = useState(true)
+  const [isLoading, setLoading] = useState(false)
   const [passwords, setPasswords] = useState({
     password: '',
     newPassword: '',
@@ -54,16 +57,16 @@ const SecuritySettings = () => {
       scanForUser()
     }, [])
 
-  async function changePassword(id: string){
+  async function changePassword(){
     try{
+      setLoading(true)
+      console.log(isLoading)
         if(passwords.confirmPassword == passwords.newPassword){
-            await fetch(`http://localhost:4000/change-password/${id}`, {
+            await betterFetch(`http://localhost:4000/change-password`, {
                 method: "PATCH",
-                headers: {
-                    'Content-Type': "application/json"
-                },
                 body: JSON.stringify(passwords),
             })
+            setLoading(false)
         }
     }catch(error){
         console.log(error)
@@ -72,7 +75,6 @@ const SecuritySettings = () => {
 
   return (
     <div className={`min-h-screen w-full transition-colors duration-700 font-sans selection:bg-[#D4AF37] selection:text-white ${theme.bg} ${theme.text}`}>
-      
       {/* --- Header / Navigation --- */}
       <header className={`fixed top-0 w-full z-50 backdrop-blur-md border-b ${theme.border} transition-colors duration-500`}>
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -210,10 +212,10 @@ const SecuritySettings = () => {
                     Cancel
                 </button>
                 
-                <button onClick={() => currentUser?.id && changePassword(currentUser.id)} className="group relative px-8 py-3 overflow-hidden border border-[#D4AF37] bg-transparent">
+                <button onClick={changePassword} className="group relative px-8 py-3 overflow-hidden border border-[#D4AF37] bg-transparent" disabled={isLoading}>
                     <span className="absolute inset-0 w-full h-full bg-[#D4AF37] -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-in-out"></span>
                     <span className={`relative z-10 uppercase tracking-[0.25em] text-xs font-semibold flex items-center gap-2 transition-colors duration-300 group-hover:text-black ${theme.text}`}>
-                        Update Security
+                        {!isLoading ? 'Update Security' : <LoaderCircle className='w-4 h-4 animate-spin' />}
                     </span>
                 </button>
             </div>

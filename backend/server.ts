@@ -6,15 +6,14 @@ import mongoose from 'mongoose'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import cookieParser from 'cookie-parser'
-import { verifyToken, AuthRequest } from './tokenVerify'
+import { verifyToken, AuthRequest } from './middleware/tokenVerify'
 import stripe from 'stripe'
 const app = express()
-app.use(express.json({limit: '50mb'}))
+app.use(express.json({limit: '16mb'}))
 app.use(cookieParser())
 const stripeCall = new stripe(process.env.STRIPE_KEY)
 
 mongoose.connect(process.env.MONGO_URL)
-let currentUser = null
 const productSchema = new mongoose.Schema({
     id: { type: String, required: true },
     name: { type: String, required: true },
@@ -55,7 +54,7 @@ app.get('/verify-token', verifyToken, async (req: AuthRequest, res: Response) =>
     try {
         const token = req.cookies.token;
         if (!token) {
-            return res.status(401).json({ message: 'No token provided.' });
+           return res.status(401).json({ message: 'No token provided.' });
         }
         let user = await users.findOne({ id: req.user.id });
         if (!user) return res.status(404).json({ message: 'No User Found.' });
@@ -96,18 +95,17 @@ app.post('/auth/login', async (req: Request, res: Response) => {
         const {email, password, rememberMe} = req.body
         const foundUser = await users.findOne({email})
         const passwordMatched = await bcrypt.compare(password, foundUser.password)
-        const token = jwt.sign({id: foundUser.id, email: foundUser.email}, process.env.JWT_TOKEN)
         if(!foundUser || !passwordMatched || email !== foundUser.email){
             return res.status(404).json({'message': "Incorrect email or password."})
         }
+        const token = jwt.sign({id: foundUser.id, email: foundUser.email}, process.env.JWT_TOKEN)
         res.cookie('token', token, {
             httpOnly: true,
             secure: false,
             sameSite: 'lax',
             maxAge: rememberMe && 10 * 365 * 24 * 60 * 60 * 1000
         })
-        currentUser = foundUser
-        res.status(200).json({message: "Successfully logged in!"})
+        res.status(200).json(foundUser)
     }catch(error){
         return res.status(500).json({message: "Something went wrong with the server."})
     }
@@ -120,8 +118,7 @@ app.post('/auth/logout', verifyToken, async (req: AuthRequest, res: Response) =>
             secure: false,
             httpOnly: true
         })
-        currentUser = null
-        return res.status(200).json({currentUser, token})
+        return res.status(200).json({token})
     }catch(error){
         return res.status(500).json({message: "Something went wrong with the server."})
     }
@@ -151,9 +148,11 @@ app.patch('/change-password', verifyToken, async (req: AuthRequest, res: Respons
         const {password, newPassword} = req.body
 
         const user = await users.findOne({id})
+        console.log(user)
         if(!user) return res.status(404).json({message: 'User not found'})
         
         const isTheSame = await bcrypt.compare(password, user.password)
+        console.log(isTheSame)
         if(!isTheSame) return res.status(401).json({message: 'Incorrect password.'})
         user.password = await bcrypt.hash(newPassword, 10)
         await user.save()
@@ -188,28 +187,33 @@ app.get('/cart', verifyToken, async (req: AuthRequest, res: Response) => {
 app.post('/cart', verifyToken, async (req: AuthRequest, res: Response) => {
     try{
         const id = req.user.id
-        const {product, quantity} = req.body
+        let {product, quantity} = req.body
         const foundUser = await users.findOne({id})
+        const existingItemIndex = foundUser.cart.findIndex((item: any) => item.id === product.id)
         if(!product || !foundUser) return res.status(404).json({message: `There's nothing here, pal.`})
+            
+        if(existingItemIndex > -1){
+            foundUser.cart[existingItemIndex].quantity += quantity
+        }else{
         const cartItem = {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          collection: product.collection,
-          image: product.images?.[0],
-          quantity
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            collection: product.collection,
+            image: product.images?.[0],
+            quantity
         }
         foundUser.cart.push(cartItem)
+        }
         await foundUser.save()
-        return res.status(201).json({message: 'Added to cart', product: cartItem})
     }catch(error){
         console.log(error)
         return res.status(500).json({message: "Yikes! Something's up with the servers or something."})
     }
 })
-app.delete('/cart/:id', verifyToken, async (req: AuthRequest, res: Response) => {
+app.delete('/cart', verifyToken, async (req: AuthRequest, res: Response) => {
     try {
-        const {id} = req.params
+        const id = req.user.id
         const {productID} = req.body
         const foundUser = await users.findOne({id})
         if(!foundUser) return res.status(404).json({message: 'User not found'})
@@ -223,7 +227,7 @@ app.delete('/cart/:id', verifyToken, async (req: AuthRequest, res: Response) => 
 })
 app.post('/checkout', verifyToken, async (req: AuthRequest, res: Response) => {
     try{
-        const {id} = req.body
+        const id = req.user.id
         const user = await users.findOne({id})
         const session = await stripeCall.checkout.sessions.create({
             payment_method_types: ['card'],

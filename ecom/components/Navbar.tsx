@@ -3,7 +3,9 @@ import { useRouter } from "next/navigation"
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link";
 import { IUser } from "@/app/page";
+import betterFetch from "@/utils/betterFetch";
 import { ShoppingBag, Search, Menu, X, Sun, Moon, Settings, LogOut, ChevronDown, Trash2 } from 'lucide-react';
+import useUserScan from "@/hooks/scanForUser";
 
 // 1. Interface Definition
 export interface Product {
@@ -21,14 +23,12 @@ export interface Product {
 function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(true)
-  const [currentUser, setUser] = useState<IUser | null>(null)
+  const {currentUser, setUser} = useUserScan()
   const [isScrolled, setIsScrolled] = useState(false)
   const route = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  
-  // 2. Cart State & Refs
-  const [cart, setCart] = useState<Product[]>([]) // Typed as Product[]
+  const [cart, setCart] = useState<Product[]>([])
   const [cartOpen, setCartOpen] = useState(false)
   const cartDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -49,12 +49,8 @@ function Navbar() {
   async function handleLogout(){
     try{
       if(currentUser !== null){
-        const response = await fetch(`http://localhost:4000/auth/logout`, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          method: 'POST',
-          credentials: 'include'
+        const response = await betterFetch(`http://localhost:4000/auth/logout`, {
+          method: 'POST'
         })
         if(response.ok) {
           setUser(null)
@@ -65,26 +61,6 @@ function Navbar() {
       console.log(error)
     }
   }
-  
-  useEffect(() => {
-      async function scanForUser(){
-        try {
-          const response = await fetch('http://localhost:4000/verify-token', {
-              headers: { 'Content-Type': "application/json" },
-              credentials: 'include'
-          })
-          if(response.ok) {
-              const res = await response.json()
-              setUser(res)
-              console.log(res)
-          }
-        } catch (e) {
-            console.log("No user found or API offline");
-        }
-      }
-      scanForUser()
-    }, [])
-
     useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
@@ -120,9 +96,8 @@ function Navbar() {
   useEffect(() => {
     async function getCart(){
         try{
-            const response = await fetch(`http://localhost:4000/cart`, {
-                headers: { 'Content-Type': "application/json" },
-                credentials: 'include'
+            const response = await betterFetch(`http://localhost:4000/cart`, {
+                method: 'GET'
             })            
             if (response.ok) {
                 const res = await response.json()
@@ -149,13 +124,10 @@ function Navbar() {
 
   async function removeFromCart(productID: string){
     try{
-        const response = await fetch(`http://localhost:4000/cart/${currentUser?.id}`, {
-            headers: { 'Content-Type': "application/json" },
+        await betterFetch(`http://localhost:4000/cart`, {
             method: 'DELETE',
-            credentials: 'include',
             body: JSON.stringify({productID})
         })
-        const res = await response.json()
         setCart(prevCart => Array.isArray(prevCart) ? prevCart.filter(item => item.id !== productID) : [])
     }catch(error){
         console.log(error)
@@ -163,10 +135,8 @@ function Navbar() {
   }
   async function checkout(id: string){
     try{
-      const response = await fetch('http://localhost:4000/checkout', {
+      const response = await betterFetch('http://localhost:4000/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': "application/json" },
-        credentials: 'include',
         body: JSON.stringify({id})
       })
       const data = await response.json()
