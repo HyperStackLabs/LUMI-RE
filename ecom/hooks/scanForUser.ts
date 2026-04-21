@@ -16,7 +16,6 @@ export default function useUserScan(){
             } catch (e) {
                 console.log("No user found or API offline");
             }
-            return {currentUser, setUser}
         }
         scanForUser()
     }, [])

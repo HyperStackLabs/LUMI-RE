@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { 
   User, 
   Package, 
@@ -8,14 +8,15 @@ import {
   ShoppingBag,
   TrendingUp 
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
-import useUserScan from '@/hooks/scanForUser';
+import { useParams, useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar'
 import betterFetch from '@/utils/betterFetch';
+import { IUser } from '@/types/types';
 
 const ProfilePage = () => {
   const router = useRouter()
-  const {currentUser} = useUserScan()
+  const {name} = useParams()
+  const [currentUser, setCurrentUser] = useState<IUser | null>()
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'settings'>('overview')
   const [isLoading, setIsLoading] = useState(true)
   const theme = {
@@ -27,6 +28,28 @@ const ProfilePage = () => {
     border: "border-gray-800",
     inputBg: "bg-transparent"
   };
+  useEffect(() => {
+    async function getProfile(username: string | string[]){
+        try {
+            const response = await fetch(`http://localhost:4000/profile/${username}`, {
+                headers: {'Content-Type': 'application/json'}
+            })
+            if (response.ok) {
+                const data = await response.json()
+                setCurrentUser(data)
+            } else {
+                console.log("User not found")
+            }
+        } catch (error) {
+            console.log(error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+    if (name) {
+        getProfile(name)
+    }
+}, [name])
 
   const handleLogout = async () => {
     try {
@@ -57,17 +80,12 @@ const ProfilePage = () => {
                 <div className="relative w-32 h-32 mx-auto mb-6">
                     <div className="w-full h-full rounded-full border-[1px] border-[#D4AF37] p-1">
                         <img 
-                            src={currentUser.profilePicture || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=2864&auto=format&fit=crop"} 
+                            src={currentUser.profilePicture || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWfAaMBpSBY28pqKilfYlNcx78HPb-hpi_6Q&s"} 
                             alt="Profile" 
                             className="w-full h-full rounded-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700"
                         />
                     </div>
-                    <button className="absolute bottom-0 right-0 bg-[#D4AF37] text-black p-2 rounded-full hover:bg-white transition-colors">
-                        <Camera size={14} />
-                    </button>
                 </div>
-
-                {/* Name & Bio */}
                 <h1 className="text-2xl font-serif mb-2">{currentUser.fullName}</h1>
                 <p className={`text-xs uppercase tracking-widest ${theme.subText} mb-6`}>{currentUser.email}</p>
                 
@@ -77,8 +95,6 @@ const ProfilePage = () => {
                         {currentUser.bio || "Connoisseur of fine timepieces and luxury goods."}
                     </p>
                 </div>
-
-                {/* Quick Stats */}
                 <div className={`grid grid-cols-2 gap-4 mt-8 pt-8 border-t ${theme.border}`}>
                     <div>
                         <p className="text-2xl font-serif">{currentUser.OrderHistory.length}</p>
@@ -90,8 +106,6 @@ const ProfilePage = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Menu Links */}
             <div className={`${theme.cardBg} border ${theme.border} p-2`}>
                 <button 
                     onClick={() => setActiveTab('overview')}
@@ -105,24 +119,14 @@ const ProfilePage = () => {
                 >
                     <Package size={16} /> Order History
                 </button>
-                <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-4 p-4 text-xs uppercase tracking-widest text-red-400 hover:bg-red-400/10 transition-colors"
-                >
-                    <LogOut size={16} /> Sign Out
-                </button>
             </div>
         </div>
-
-        {/* --- RIGHT COLUMN: Content Area --- */}
         <div className="lg:col-span-8">
-            
-            {/* TAB: OVERVIEW */}
             {activeTab === 'overview' && (
                 <div className="space-y-6 animate-fade-in">
                     <div className={`${theme.cardBg} border ${theme.border} p-8 flex flex-col md:flex-row items-center justify-between gap-6`}>
                          <div>
-                            <h2 className="text-2xl font-serif mb-2">Welcome Back, {currentUser.fullName.split(' ')[0]}.</h2>
+                            <h2 className="text-2xl font-serif mb-2">{`Welcome Back, ${currentUser.fullName.split(' ')[0]}`}.</h2>
                             <p className={`text-sm ${theme.subText}`}>You have {currentUser.cart.length} items waiting in your shopping bag.</p>
                          </div>
                          <button onClick={() => router.push('/')} className="px-8 py-3 bg-[#D4AF37] text-black text-xs uppercase tracking-widest font-bold hover:bg-white transition-colors">
@@ -145,8 +149,6 @@ const ProfilePage = () => {
                                 <p className="text-sm text-gray-500 italic">No purchases yet.</p>
                              )}
                          </div>
-
-                         {/* Card 2: Total Investment */}
                          <div className={`${theme.cardBg} border ${theme.border} p-6`}>
                             <h3 className="text-[#D4AF37] text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
                             <TrendingUp size={14} /> Total Investment
@@ -161,8 +163,6 @@ const ProfilePage = () => {
                     </div>
                 </div>
             )}
-
-            {/* TAB: ORDERS */}
             {activeTab === 'orders' && (
                 <div className={`${theme.cardBg} border ${theme.border} animate-fade-in`}>
                     <div className="p-8 border-b border-gray-800 flex justify-between items-center">
@@ -177,13 +177,11 @@ const ProfilePage = () => {
                         </div>
                     ) : (
                         <div>
-                            {/* Table Header */}
                             <div className="grid grid-cols-12 px-8 py-4 bg-white/5 text-[10px] uppercase tracking-widest text-gray-400">
                                 <div className="col-span-8">Product Name</div>
                                 <div className="col-span-4 text-right">Price</div>
                             </div>
                             
-                            {/* List */}
                             {currentUser.OrderHistory.slice().reverse().map((order, idx) => (
                                 <div key={idx} className="grid grid-cols-12 px-8 py-6 border-b border-gray-800 hover:bg-white/5 transition-colors items-center group">
                                     <div className="col-span-8 flex items-center gap-4">
@@ -204,16 +202,6 @@ const ProfilePage = () => {
             )}
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in {
-          0% { opacity: 0; transform: translateY(10px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.4s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

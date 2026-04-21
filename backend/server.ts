@@ -58,7 +58,7 @@ app.get('/verify-token', verifyToken, async (req: AuthRequest, res: Response) =>
         }
         let user = await users.findOne({ id: req.user.id });
         if (!user) return res.status(404).json({ message: 'No User Found.' });
-        return res.json(user);
+        return res.status(200).json(user);
     } catch (error) {
         console.log(error);
         return res.status(401).json({ message: 'Invalid or expired token.' });
@@ -98,12 +98,12 @@ app.post('/auth/login', async (req: Request, res: Response) => {
         if(!foundUser || !passwordMatched || email !== foundUser.email){
             return res.status(404).json({'message': "Incorrect email or password."})
         }
-        const token = jwt.sign({id: foundUser.id, email: foundUser.email}, process.env.JWT_TOKEN)
+        const token = jwt.sign({id: foundUser.id}, process.env.JWT_TOKEN, {expiresIn: rememberMe ? '365d' : '24h'})
         res.cookie('token', token, {
             httpOnly: true,
             secure: false,
             sameSite: 'lax',
-            maxAge: rememberMe && 10 * 365 * 24 * 60 * 60 * 1000
+            maxAge: rememberMe ? (365 * 24 * 60 * 60 * 1000) : 24 * 60 * 60 * 1000
         })
         res.status(200).json(foundUser)
     }catch(error){
@@ -146,13 +146,11 @@ app.patch('/change-password', verifyToken, async (req: AuthRequest, res: Respons
     try{
         const id = req.user.id
         const {password, newPassword} = req.body
-
         const user = await users.findOne({id})
         console.log(user)
         if(!user) return res.status(404).json({message: 'User not found'})
         
         const isTheSame = await bcrypt.compare(password, user.password)
-        console.log(isTheSame)
         if(!isTheSame) return res.status(401).json({message: 'Incorrect password.'})
         user.password = await bcrypt.hash(newPassword, 10)
         await user.save()
@@ -163,7 +161,7 @@ app.patch('/change-password', verifyToken, async (req: AuthRequest, res: Respons
 })
 app.post('/products/:type', async (req: AuthRequest, res: Response) => {
     try{
-        const {type} = req.body
+        const {type} = req.params
         if(['watch', 'clothing', 'jewelry'].includes(type)){
             const specifiedProductList = await products.find({type})
             res.json(specifiedProductList)
@@ -303,7 +301,21 @@ app.get('/checkout-session', verifyToken, async (req: AuthRequest, res: Response
     console.error("Stripe Error:", error);
     res.status(500).json({ message: 'Failed to retrieve session' });
   }
-});
+})
+app.get('/profile/:name', async (req: AuthRequest, res: Response) => {
+    const {name} = req.params
+    console.log(name)
+    try{
+        const foundUser = await users.findOne({fullName: name})
+        if(foundUser){
+            return res.status(200).json(foundUser)
+        }else{
+            return res.status(404).json({message: 'Profile not found.'})
+        }
+    }catch(error){
+        res.status(500).json({ message: 'Something went wrong...' });
+    }
+})
 app.post('/product-details/:id', verifyToken, async (req: AuthRequest, res: Response) => {
     try{
         const {id} = req.user

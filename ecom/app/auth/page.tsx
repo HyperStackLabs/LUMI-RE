@@ -55,7 +55,6 @@ const LuxuryAuth = () => {
         credentials: 'include',
         body: JSON.stringify(loginCredentials)
       })
-      const res = await response.json()
       route.push('/')
     }catch(error){
       console.log(error)

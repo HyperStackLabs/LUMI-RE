@@ -17,6 +17,7 @@ import {
 import { Product, Comment } from '@/types/types';
 import Navbar from '@/components/Navbar';
 import { IUser } from '@/app/page';
+import betterFetch from '@/utils/betterFetch';
 
 const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
   const resolvedParams = use(params);
@@ -46,7 +47,7 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
   useEffect(() => {
       async function scanForUser(){
         try {
-          const response = await fetch('http://localhost:4000/verify-token', {
+          const response = await betterFetch('http://localhost:4000/verify-token', {
               headers: {'Content-Type': "application/json"},
               credentials: 'include'
           })
@@ -64,11 +65,8 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
     }, [])
   useEffect(() => {
     async function getProducts(type: string){
-      const response = await fetch(`http://localhost:4000/products/${type}`, {
+      const response = await betterFetch(`http://localhost:4000/products/${type}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({type})
       })
       const res = await response.json()
@@ -79,12 +77,8 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
   }, [])
   async function addToCart(product: Product, quantity: number){
     try {
-      const response = await fetch(`http://localhost:4000/cart`, {
+      const response = await betterFetch(`http://localhost:4000/cart`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify({product, quantity})
       })
       if(response.ok) {
@@ -96,12 +90,8 @@ const ProductPage = ({params}: {params: Promise<{id: string}>}) => {
   }
   async function postComment(id: string){
     try{
-      const response = await fetch(`http://localhost:4000/product-details/${id}`, {
+      const response = await betterFetch(`http://localhost:4000/product-details/${id}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify({...newComment})
       })
       console.log(newComment)

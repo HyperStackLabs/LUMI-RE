@@ -1,21 +1,38 @@
 'use client'
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Product } from '@/types/types';
 import { 
+  ShoppingBag, 
+  Menu,
+  Sun, 
+  Moon,
   ChevronDown,
   Heart
 } from 'lucide-react';
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar';
 import betterFetch from '@/utils/betterFetch';
-import useProductType from '@/hooks/getProduct';
 
 const WatchesPage = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
   const [isScrolled, setIsScrolled] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-  const {products} = useProductType('clothing')
+  const [CLOTHING, setClothing] = useState<Product[]>([])
   const route = useRouter()
+
+useEffect(() => {
+  async function getProducts(type: string){
+    const response = await betterFetch(`http://localhost:4000/products/${type}`, {
+      method: 'POST',
+      body: JSON.stringify({type})
+    })
+    const res = await response.json()
+    setClothing(res)
+    console.log(res)
+  }
+  getProducts('clothing')
+}, [])
 
   // Scroll Listener
   useEffect(() => {
@@ -27,8 +44,8 @@ const WatchesPage = () => {
   // Filter Logic
   const categories = ["All", 'Jacket', 'Dress', 'Sweater', 'Suit'];
   const filteredJewelry = activeFilter === "All" 
-    ? clothing
-    : clothing?.filter(w => w.category === activeFilter);
+    ? CLOTHING
+    : CLOTHING.filter(w => w.category === activeFilter);
 
   // Theme Config
   const theme = {
@@ -86,7 +103,7 @@ const WatchesPage = () => {
 
             {/* Sort / Count */}
             <div className={`hidden md:flex items-center gap-4 text-xs uppercase tracking-widest ${theme.subText}`}>
-                <span>{filteredJewelry?.length} Results</span>
+                <span>{filteredJewelry.length} Results</span>
                 <div className="h-4 bg-gray-600"></div>
                 <button className="flex items-center gap-1 hover:text-[#D4AF37] transition-colors">
                     Sort By <ChevronDown size={14} />
@@ -98,7 +115,7 @@ const WatchesPage = () => {
       {/* --- Product Grid --- */}
       <section className="py-24 px-6 max-w-7xl mx-auto min-h-screen">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-16">
-          {filteredJewelry?.map((product) => (
+          {filteredJewelry.map((product) => (
             <div 
               key={product.id} 
               className="group flex flex-col items-center"
